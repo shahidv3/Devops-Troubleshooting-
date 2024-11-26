@@ -1,0 +1,88 @@
+If your GitLab is running on Kubernetes, determining which database it uses requires checking the GitLab configuration. The database configuration is typically stored in GitLab’s gitlab.rb file or environment variables. Here’s how you can find out which database GitLab is using:
+
+1. Check the GitLab Helm Chart Configuration
+
+If you deployed GitLab using the GitLab Helm chart, the database configuration is likely set in the Helm chart values file.
+	•	Retrieve the currently deployed values:
+
+helm get values <release-name> -n <namespace>
+
+
+	•	Look for the database configuration under global.psql or global.psql.host.
+
+2. Inspect Environment Variables in the GitLab Pod
+
+GitLab pods will often use environment variables to connect to the database.
+	•	List the pods in your GitLab namespace:
+
+kubectl get pods -n <namespace>
+
+
+	•	Identify the pod running GitLab (likely webservice or task-runner).
+	•	Check the environment variables for database details:
+
+kubectl exec -it <pod-name> -n <namespace> -- env | grep DB
+
+
+
+You might see variables like:
+	•	DB_HOST: The database host
+	•	DB_PORT: The port used to connect
+	•	DB_NAME: The name of the database
+	•	DB_USER: The username for the database
+	•	DB_PASSWORD: The database password
+
+3. Check the GitLab Configuration Inside the Pod
+
+GitLab’s configuration file (gitlab.rb) contains details about the database.
+	•	Access the shell of the GitLab pod:
+
+kubectl exec -it <pod-name> -n <namespace> -- bash
+
+
+	•	Locate the gitlab.rb file. It’s usually found at:
+
+/etc/gitlab/gitlab.rb
+
+
+	•	Look for the database configuration section:
+
+cat /etc/gitlab/gitlab.rb | grep -i postgresql
+
+4. Check Kubernetes Secrets
+
+If the database credentials are stored as Kubernetes secrets:
+	•	List the secrets in your namespace:
+
+kubectl get secrets -n <namespace>
+
+
+	•	Find the secret associated with the database (e.g., gitlab-postgresql).
+	•	Decode the secret:
+
+kubectl get secret <secret-name> -n <namespace> -o yaml
+
+
+	•	Look for the database configuration values like POSTGRES_PASSWORD or DATABASE_URL.
+
+5. Default Database for GitLab Helm Chart
+
+	•	If you used the official GitLab Helm chart without specifying an external database, GitLab is likely using the bundled PostgreSQL database, managed as a separate StatefulSet within your Kubernetes cluster.
+	•	List the StatefulSets in your namespace:
+
+kubectl get statefulsets -n <namespace>
+
+
+	•	Look for postgresql in the list.
+
+6. Validate Database Connection
+
+Once you identify the database, you can connect to it for further validation.
+
+For PostgreSQL, use:
+
+kubectl exec -it <postgresql-pod-name> -n <namespace> -- psql -U <username> -d <database>
+
+Replace <username> and <database> with values from the configuration or secrets.
+
+If you’re still unsure about the database configuration, let me know the Helm chart or deployment method you’re using for GitLab, and I can assist further!
